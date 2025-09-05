@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { apiFetch } from "@/lib/utils"
+import DocumentViewer from "./DocumentViewer"
 import NextDynamic from "next/dynamic"
 import {
   Upload,
@@ -389,65 +390,7 @@ export default function VidHivedApp() {
           onMouseEnter={() => setShowToolbar(true)}
           onMouseLeave={() => setShowToolbar(false)}
         >
-          <div className="relative">
-            {pdfFile && (
-              <Document file={pdfFile} onLoadSuccess={onDocumentLoadSuccess} className="max-w-full">
-                {Array.from(new Array(numPages), (el, index) => {
-                  const pageNumber = index + 1
-                  return (
-                    <div
-                      key={`page_${pageNumber}`}
-                      className="relative mb-4"
-                      data-page-number={pageNumber}
-                      ref={(el) => setPageRefs((prev) => ({ ...prev, [pageNumber]: el }))}
-                    >
-                      <Page
-                        pageNumber={pageNumber}
-                        onLoadSuccess={onPageLoadSuccess}
-                        className="shadow-lg"
-                        scale={scale}
-                        width={Math.min(600 * scale, window.innerWidth * 0.5)}
-                      />
-
-                      {analysisResult?.analysis
-                        .filter((clause) => clause.location.page === pageNumber)
-                        .map((clause) => {
-                          const pageElement = pageRefs[pageNumber]
-                          const pageRect = pageElement?.querySelector("canvas")?.getBoundingClientRect()
-
-                          if (!pageRect) return null
-
-                          const coords = getScaledCoordinates(clause, pageRect.width, pageRect.height)
-                          const isActive = activeClause === clause.id
-                          const isHovered = hoveredClause === clause.id
-
-                          return (
-                            <div
-                              key={clause.id}
-                              data-clause-id={clause.id}
-                              className={`absolute cursor-pointer transition-all duration-200 border ${
-                                isActive ? "opacity-40 border-2" : isHovered ? "opacity-35 border" : "opacity-30 border"
-                              }`}
-                              style={{
-                                left: `${coords.left}px`,
-                                top: `${coords.top}px`,
-                                width: `${coords.width}px`,
-                                height: `${coords.height}px`,
-                                backgroundColor: getCategoryColor(clause.category),
-                                borderColor: getCategoryColor(clause.category),
-                              }}
-                              onMouseEnter={() => handleClauseHover(clause.id)}
-                              onMouseLeave={() => handleClauseHover(null)}
-                              onClick={() => handleClauseClick(clause.id)}
-                            />
-                          )
-                        })}
-                    </div>
-                  )
-                })}
-              </Document>
-            )}
-          </div>
+          <DocumentViewer pdfFile={pdfFile} />
 
           {showToolbar && pdfFile && (
             <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/70 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2 z-10 transition-opacity duration-200">
