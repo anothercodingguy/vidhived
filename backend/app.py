@@ -1,11 +1,5 @@
 # --- Root API Endpoint ---
-@app.route('/', methods=['GET'])
-def index():
-    return jsonify({
-        "message": "Vidhived.ai Backend API",
-        "version": "1.0",
-        "endpoints": ["/health", "/upload", "/document/<id>", "/ask"]
-    })
+# (Moved below Flask app initialization)
 # Vidhived.ai - Legal Co-pilot Backend
 # This file contains the main Flask application that powers the backend services.
 
