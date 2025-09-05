@@ -521,7 +521,7 @@ export default function VidHivedApp() {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              <MessageSquare className="w-5 h-5" />
+              <MessageCircle className="w-5 h-5" />
               AI Chat
             </button>
           </div>
