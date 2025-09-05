@@ -265,6 +265,7 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "status": "failed",
                 "error": str(e)
             }
+    return
 
 @app.route('/health', methods=['GET'])
 def health():
