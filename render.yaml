@@ -1,0 +1,45 @@
+# Render blueprint for Vidhived.ai
+# Creates two services: Flask backend (Gunicorn) and Next.js frontend
+
+services:
+  - type: web
+    name: vidhived-backend
+    env: python
+    rootDir: backend
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py wsgi:application
+    healthCheckPath: /health
+    envVars:
+      - key: LOG_LEVEL
+        value: info
+      - key: GCP_PROJECT_ID
+        sync: false
+      - key: GCP_REGION
+        value: us-central1
+      - key: GCS_BUCKET_NAME
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: vidhived-frontend
+          property: url
+
+  - type: web
+    name: vidhived-frontend
+    env: node
+    rootDir: my-app
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: vidhived-backend
+          property: url
+
