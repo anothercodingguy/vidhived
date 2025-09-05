@@ -266,6 +266,8 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "error": str(e)
             }
 
+# End of analyze_document_task
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"})
