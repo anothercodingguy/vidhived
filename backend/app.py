@@ -173,18 +173,12 @@ def analyze_document_task(document_id: str, gcs_uri: str):
         operation.result(timeout=420) # This waits for the OCR to finish.
 
         # --- 2. Process OCR Output ---
-        storage_client = storage.Client()
-        bucket = storage_client.get_bucket(GCS_BUCKET_NAME)
-        
-        full_text = ""
-        clauses = []
         try:
             # --- 1. OCR with Google Cloud Vision ---
             vision_client = vision.ImageAnnotatorClient()
             feature = vision.Feature(type_=vision.Feature.Type.DOCUMENT_TEXT_DETECTION)
             gcs_source = vision.GcsSource(uri=gcs_uri)
             input_config = vision.InputConfig(gcs_source=gcs_source, mime_type='application/pdf')
-            # Define gcs_destination and output_config before using them
             gcs_destination = vision.GcsDestination(uri=f"gs://{GCS_BUCKET_NAME}/analysis-results/{document_id}/")
             output_config = vision.OutputConfig(gcs_destination=gcs_destination, batch_size=20)
             async_request = vision.AsyncAnnotateFileRequest(
@@ -199,7 +193,6 @@ def analyze_document_task(document_id: str, gcs_uri: str):
             bucket = storage_client.get_bucket(GCS_BUCKET_NAME)
             full_text = ""
             clauses = []
-            # Find the OCR output JSON files in GCS
             prefix = f"analysis-results/{document_id}/"
             blob_list = [blob for blob in bucket.list_blobs(prefix=prefix) if blob.name.endswith('.json')]
             for blob in blob_list:
@@ -213,11 +206,10 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                             for word in paragraph['words']:
                                 word_text = "".join([symbol['text'] for symbol in word['symbols']])
                                 block_text += word_text + " "
-                                # This is a simplification; proper sentence reconstruction is complex.
                         full_text += block_text + "\n\n"
                         clauses.append({
                             "text": block_text.strip(),
-                            "location": vertices, # Bounding box for the entire block
+                            "location": vertices,
                         })
 
             # --- 3. Score, Categorize, and Simplify each Clause ---
@@ -228,14 +220,13 @@ def analyze_document_task(document_id: str, gcs_uri: str):
             analyzed_clauses = []
             for clause in clauses:
                 clause_text = clause['text']
-                if len(clause_text.split()) < 5: # Skip very short text blocks
+                if len(clause_text.split()) < 5:
                     continue
                 score = phrase_scorer.score_phrase(clause_text)
                 category = get_risk_category(score)
                 simplified_explanation = ""
                 clause_type = "General"
                 if category in ["Red", "Yellow"]:
-                    # MOCK: Replace with Vertex AI call in production
                     if "terminate" in clause_text.lower():
                         clause_type = "Termination Clause"
                         simplified_explanation = "This section explains how and when the agreement can be ended by either party. Pay close attention to the reasons and notice periods required."
@@ -262,10 +253,8 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "fullText": full_text,
                 "analysis": analyzed_clauses
             }
-            # Save the final JSON to GCS
             result_blob = bucket.blob(f"analysis-results/{document_id}/final_analysis.json")
             result_blob.upload_from_string(json.dumps(final_result, indent=2), content_type='application/json')
-            # Update in-memory job status
             document_analysis_jobs[document_id] = final_result
             logger.info(f"Analysis completed successfully for document: {document_id}")
 
@@ -276,17 +265,6 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "status": "failed",
                 "error": str(e)
             }
-@app.errorhandler(404)
-def handle_not_found(error) -> Tuple[dict, int]:
-    return jsonify({"error": "Not Found"}), 404
-
-@app.errorhandler(500)
-def handle_server_error(error) -> Tuple[dict, int]:
-    logger.exception("Internal server error")
-    return jsonify({"error": "Internal Server Error"}), 500
-
-@app.route('/', methods=['GET'])
-def root():
     return jsonify({"message": "Vidhived.ai Backend API", "version": "1.0", "endpoints": ["/health", "/upload", "/document/<id>", "/ask"]})
 
 @app.route('/health', methods=['GET'])
