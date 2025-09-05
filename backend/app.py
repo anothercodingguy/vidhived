@@ -161,7 +161,7 @@ def analyze_document_task(document_id: str, gcs_uri: str):
         input_config = vision.InputConfig(gcs_source=gcs_source, mime_type='application/pdf')
         
         async_request = vision.AsyncAnnotateFileRequest(
-            features=[feature], input_config=input_config
+            features=[feature], input_config=input_config, output_config=output_config
         )
         
         # In production, you'd need a GCS bucket for the output
@@ -298,6 +298,10 @@ def handle_server_error(error) -> Tuple[dict, int]:
     logger.exception("Internal server error")
     return jsonify({"error": "Internal Server Error"}), 500
 
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({"message": "Vidhived.ai Backend API", "version": "1.0", "endpoints": ["/health", "/upload", "/document/<id>", "/ask"]})
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"})
@@ -405,4 +409,5 @@ def ask_question():
 
 if __name__ == '__main__':
     # Use 0.0.0.0 to make it accessible on your local network
+    logger.info(f"Starting Flask app on port {os.getenv('PORT', '8080')}")
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", "8080")), debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
