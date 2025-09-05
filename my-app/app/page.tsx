@@ -67,6 +67,7 @@ export default function VidHivedApp() {
   const [showToolbar, setShowToolbar] = useState(false)
   const [pageRefs, setPageRefs] = useState<{ [key: number]: HTMLDivElement | null }>({})
   const [hoveredClause, setHoveredClause] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pdfViewerRef = useRef<HTMLDivElement>(null)
@@ -106,11 +107,12 @@ export default function VidHivedApp() {
       const data = response as any
       setDocumentId(data.documentId)
       setAppState("processing")
+      setErrorMessage(null)
 
       // Start polling for analysis status
       checkAnalysisStatus(data.documentId)
     } catch (error: any) {
-      alert(error.message || "Analysis Failed")
+      setErrorMessage(error.message || "Analysis Failed")
       setAppState("failed")
     }
   }
@@ -123,17 +125,19 @@ export default function VidHivedApp() {
         if (data.status === "completed") {
           setAnalysisResult(data)
           setAppState("analyzing")
+          setErrorMessage(null)
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current)
           }
         } else if (data.status === "failed") {
           setAppState("failed")
+          setErrorMessage((data as any).error || "Analysis Failed")
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current)
           }
         }
       } catch (error: any) {
-        alert(error.message || "Analysis Failed")
+        setErrorMessage(error.message || "Analysis Failed")
         setAppState("failed")
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
@@ -384,13 +388,14 @@ export default function VidHivedApp() {
         <div className="text-center max-w-md">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
-          <p className="text-gray-400 mb-6">Something went wrong while processing your document.</p>
+          <p className="text-gray-400 mb-6">{errorMessage || "Something went wrong while processing your document."}</p>
           <button
             onClick={() => {
               setAppState("idle")
               setPdfFile(null)
               setDocumentId(null)
               setAnalysisResult(null)
+              setErrorMessage(null)
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
           >
