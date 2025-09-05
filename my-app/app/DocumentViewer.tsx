@@ -21,7 +21,8 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
   }
 
   function onDocumentLoadError(err: Error) {
-    setError(err?.message || 'Failed to load PDF.');
+    console.error('PDF load error:', err);
+    setError(err?.message || 'Failed to load PDF. Please make sure you are uploading a valid PDF file.');
     setLoading(false);
   }
 
@@ -34,7 +35,8 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
       {loading && !error && (
         <div className="text-center w-full">
           <span className="animate-spin inline-block mr-2">⏳</span>
-          Loading PDF...
+          Loading PDF...<br />
+          <span className="text-xs text-gray-400">If this takes too long, please check your file and try again.</span>
         </div>
       )}
       {error && (
