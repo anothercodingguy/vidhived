@@ -178,117 +178,104 @@ def analyze_document_task(document_id: str, gcs_uri: str):
         
         full_text = ""
         clauses = []
-        
-        # Find the OCR output JSON files in GCS
-        prefix = f"analysis-results/{document_id}/"
-        blob_list = [blob for blob in bucket.list_blobs(prefix=prefix) if blob.name.endswith('.json')]
-        
-        for blob in blob_list:
-            json_string = blob.download_as_string()
-            response = json.loads(json_string)
-            for page in response['responses'][0]['fullTextAnnotation']['pages']:
-                for block in page['blocks']:
-                    block_text = ""
-                    vertices = block['boundingBox']['vertices']
-                    for paragraph in block['paragraphs']:
-                        for word in paragraph['words']:
-                            word_text = "".join([symbol['text'] for symbol in word['symbols']])
-                            block_text += word_text + " "
-                            # This is a simplification; proper sentence reconstruction is complex.
-                    
-                    full_text += block_text + "\n\n"
-                    clauses.append({
-                        "text": block_text.strip(),
-                        "location": vertices, # Bounding box for the entire block
+        try:
+            # --- 1. OCR with Google Cloud Vision ---
+            vision_client = vision.ImageAnnotatorClient()
+            feature = vision.Feature(type_=vision.Feature.Type.DOCUMENT_TEXT_DETECTION)
+            gcs_source = vision.GcsSource(uri=gcs_uri)
+            input_config = vision.InputConfig(gcs_source=gcs_source, mime_type='application/pdf')
+            # Define gcs_destination and output_config before using them
+            gcs_destination = vision.GcsDestination(uri=f"gs://{GCS_BUCKET_NAME}/analysis-results/{document_id}/")
+            output_config = vision.OutputConfig(gcs_destination=gcs_destination, batch_size=20)
+            async_request = vision.AsyncAnnotateFileRequest(
+                features=[feature], input_config=input_config, output_config=output_config
+            )
+            operation = vision_client.async_batch_annotate_files(requests=[async_request])
+            logger.info(f"Waiting for OCR operation to complete for document: {document_id}")
+            operation.result(timeout=420) # This waits for the OCR to finish.
+
+            # --- 2. Process OCR Output ---
+            storage_client = storage.Client()
+            bucket = storage_client.get_bucket(GCS_BUCKET_NAME)
+            full_text = ""
+            clauses = []
+            # Find the OCR output JSON files in GCS
+            prefix = f"analysis-results/{document_id}/"
+            blob_list = [blob for blob in bucket.list_blobs(prefix=prefix) if blob.name.endswith('.json')]
+            for blob in blob_list:
+                json_string = blob.download_as_string()
+                response = json.loads(json_string)
+                for page in response['responses'][0]['fullTextAnnotation']['pages']:
+                    for block in page['blocks']:
+                        block_text = ""
+                        vertices = block['boundingBox']['vertices']
+                        for paragraph in block['paragraphs']:
+                            for word in paragraph['words']:
+                                word_text = "".join([symbol['text'] for symbol in word['symbols']])
+                                block_text += word_text + " "
+                                # This is a simplification; proper sentence reconstruction is complex.
+                        full_text += block_text + "\n\n"
+                        clauses.append({
+                            "text": block_text.strip(),
+                            "location": vertices, # Bounding box for the entire block
+                        })
+
+            # --- 3. Score, Categorize, and Simplify each Clause ---
+            aiplatform.init(project=GCP_PROJECT_ID, location=GCP_REGION)
+            model = aiplatform.gapic.ModelServiceClient().model_path(
+                project=GCP_PROJECT_ID, location=GCP_REGION, model="gemini-1.5-pro-preview-0409"
+            )
+            analyzed_clauses = []
+            for clause in clauses:
+                clause_text = clause['text']
+                if len(clause_text.split()) < 5: # Skip very short text blocks
+                    continue
+                score = phrase_scorer.score_phrase(clause_text)
+                category = get_risk_category(score)
+                simplified_explanation = ""
+                clause_type = "General"
+                if category in ["Red", "Yellow"]:
+                    # MOCK: Replace with Vertex AI call in production
+                    if "terminate" in clause_text.lower():
+                        clause_type = "Termination Clause"
+                        simplified_explanation = "This section explains how and when the agreement can be ended by either party. Pay close attention to the reasons and notice periods required."
+                    elif "pay" in clause_text.lower() or "payment" in clause_text.lower():
+                        clause_type = "Payment Terms"
+                        simplified_explanation = "This describes when and how much money needs to be paid. Check for deadlines and any penalties for late payments."
+                    else:
+                        clause_type = "General Obligation"
+                        simplified_explanation = "This clause outlines a specific duty or responsibility that one of the parties must follow."
+                if category in ["Red", "Yellow", "Green"]:
+                    analyzed_clauses.append({
+                        "text": clause_text,
+                        "location": clause['location'],
+                        "score": score,
+                        "category": category,
+                        "explanation": simplified_explanation,
+                        "type": clause_type
                     })
 
-        # --- 3. Score, Categorize, and Simplify each Clause ---
-        aiplatform.init(project=GCP_PROJECT_ID, location=GCP_REGION)
-        model = aiplatform.gapic.ModelServiceClient().model_path(
-            project=GCP_PROJECT_ID, location=GCP_REGION, model="gemini-1.5-pro-preview-0409"
-        )
-        
-        analyzed_clauses = []
-        for clause in clauses:
-            clause_text = clause['text']
-            if len(clause_text.split()) < 5: # Skip very short text blocks
-                continue
-            
-            score = phrase_scorer.score_phrase(clause_text)
-            category = get_risk_category(score)
-            
-            simplified_explanation = ""
-            clause_type = "General"
-            
-            # Only call Gemini for important clauses to save costs
-            if category in ["Red", "Yellow"]:
-                prompt = f"""
-                You are a smart legal co-pilot named Vidhived.ai. Your goal is to explain legal text in plain English for non-lawyers.
-                Analyze the following clause from a legal document.
-                
-                Document Clause: "{clause_text}"
+            # --- 4. Store Final Analysis ---
+            final_result = {
+                "documentId": document_id,
+                "status": "completed",
+                "fullText": full_text,
+                "analysis": analyzed_clauses
+            }
+            # Save the final JSON to GCS
+            result_blob = bucket.blob(f"analysis-results/{document_id}/final_analysis.json")
+            result_blob.upload_from_string(json.dumps(final_result, indent=2), content_type='application/json')
+            # Update in-memory job status
+            document_analysis_jobs[document_id] = final_result
+            logger.info(f"Analysis completed successfully for document: {document_id}")
 
-                Tasks:
-                1. Identify the type of clause (e.g., "Termination Clause", "Notice Period", "Confidentiality", "Payment Terms").
-                2. Explain what this clause means in simple, easy-to-understand terms. Focus on the practical impact for the user.
-                
-                Provide the output in a JSON format like this:
-                {
-                  "clause_type": "...",
-                }
-                        output_config = vision.OutputConfig(gcs_destination=gcs_destination, batch_size=20)
-                """
-                # MOCK: Replace with Vertex AI call in production
-                if "terminate" in clause_text.lower():
-                    clause_type = "Termination Clause"
-                    simplified_explanation = "This section explains how and when the agreement can be ended by either party. Pay close attention to the reasons and notice periods required."
-                elif "pay" in clause_text.lower() or "payment" in clause_text.lower():
-                    clause_type = "Payment Terms"
-                    simplified_explanation = "This describes when and how much money needs to be paid. Check for deadlines and any penalties for late payments."
-                else:
-                    clause_type = "General Obligation"
-                    simplified_explanation = "This clause outlines a specific duty or responsibility that one of the parties must follow."
-            
-            if category in ["Red", "Yellow", "Green"]:
-                analyzed_clauses.append({
-                    "text": clause_text,
-                    "location": clause['location'],
-                    "score": score,
-                    "category": category,
-                    "explanation": simplified_explanation,
-                    "type": clause_type
-                })
-
-        # --- 4. Store Final Analysis ---
-        final_result = {
-            "documentId": document_id,
-            "status": "completed",
-            "fullText": full_text,
-            "analysis": analyzed_clauses
-        }
-        
-        # Save the final JSON to GCS
-        result_blob = bucket.blob(f"analysis-results/{document_id}/final_analysis.json")
-        result_blob.upload_from_string(json.dumps(final_result, indent=2), content_type='application/json')
-        
-        # Update in-memory job status
-        document_analysis_jobs[document_id] = final_result
-        logger.info(f"Analysis completed successfully for document: {document_id}")
-
-    except Exception as e:
-        logger.exception(f"Error analyzing document {document_id}: {e}")
-        document_analysis_jobs[document_id] = {
-            "documentId": document_id,
-            "status": "failed",
-            "error": str(e)
-        }
-
-
-# --- Error handlers and healthcheck ---
-@app.errorhandler(400)
-def handle_bad_request(error) -> Tuple[dict, int]:
-    return jsonify({"error": "Bad Request", "details": getattr(error, "description", None)}), 400
-
+        except Exception as e:
+            logger.exception(f"Error analyzing document {document_id}: {e}")
+            document_analysis_jobs[document_id] = {
+                "documentId": document_id,
+                "status": "failed",
+                "error": str(e)
+            }
 @app.errorhandler(404)
 def handle_not_found(error) -> Tuple[dict, int]:
     return jsonify({"error": "Not Found"}), 404
