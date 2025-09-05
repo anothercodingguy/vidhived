@@ -100,7 +100,7 @@ export default function VidHivedApp() {
 
       const response = await apiFetch("/upload", {
         method: "POST",
-        body: formData as any,
+        body: formData,
       })
 
       const data = response as any
@@ -109,8 +109,8 @@ export default function VidHivedApp() {
 
       // Start polling for analysis status
       checkAnalysisStatus(data.documentId)
-    } catch (error) {
-      console.error("Upload error:", error)
+    } catch (error: any) {
+      alert(error.message || "Analysis Failed")
       setAppState("failed")
     }
   }
@@ -132,8 +132,8 @@ export default function VidHivedApp() {
             clearInterval(pollingIntervalRef.current)
           }
         }
-      } catch (error) {
-        console.error("Status check error:", error)
+      } catch (error: any) {
+        alert(error.message || "Analysis Failed")
         setAppState("failed")
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
