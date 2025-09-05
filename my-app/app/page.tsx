@@ -383,98 +383,19 @@ export default function VidHivedApp() {
   // Main Analysis View (show PDF viewer for both 'analyzing' and 'failed' states)
   if (appState === "analyzing" || appState === "failed") {
     return (
-      <div className="min-h-screen bg-gray-900 text-white font-['Inter'] flex flex-col lg:flex-row">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 text-white font-['Inter'] flex flex-col lg:flex-row">
         {/* Left Pane - Enhanced PDF Viewer */}
         <div
-          className="flex-1 p-6 border-r border-gray-700 overflow-auto relative"
+          className="flex-1 p-8 border-r border-gray-800 overflow-auto relative shadow-xl rounded-l-xl"
           ref={pdfViewerRef}
           onMouseEnter={() => setShowToolbar(true)}
           onMouseLeave={() => setShowToolbar(false)}
         >
-          <DocumentViewer pdfFile={pdfFile} />
-
-          {showToolbar && pdfFile && (
-            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/70 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2 z-10 transition-opacity duration-200">
-              <button
-                onClick={handleZoomOut}
-                disabled={scale <= 0.5}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-
-              <span className="text-sm text-gray-300 px-2">{Math.round(scale * 100)}%</span>
-
-              <button
-                onClick={handleZoomIn}
-                disabled={scale >= 3.0}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-
-              <div className="w-px h-6 bg-gray-600 mx-2" />
-
-              <button
-                onClick={handlePrevPage}
-                disabled={currentPage <= 1}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Previous Page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <span className="text-sm text-gray-300 px-2 min-w-[80px] text-center">
-                Page {currentPage} of {numPages}
-              </span>
-
-              <button
-                onClick={handleNextPage}
-                disabled={currentPage >= numPages}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Next Page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right Pane - AI Insights Panel */}
-        <div className="w-full lg:w-2/5 flex flex-col bg-gray-800">
-          {/* Tab Headers */}
-          <div className="flex border-b border-gray-700">
-            <button
-              onClick={() => setActiveTab("insights")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors ${
-                activeTab === "insights"
-                  ? "bg-gray-700 text-blue-400 border-b-2 border-blue-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <FileText className="w-5 h-5" />
-              Key Insights
-            </button>
-            <button
-              onClick={() => setActiveTab("chat")}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors ${
-                activeTab === "chat"
-                  ? "bg-gray-700 text-blue-400 border-b-2 border-blue-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              AI Chat
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          <div className="flex-1 overflow-auto">
-            {appState === "failed" ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <div className="rounded-lg bg-gray-950 shadow-lg p-4 h-full flex flex-col justify-center items-center">
+            <DocumentViewer pdfFile={pdfFile} />
+            {appState === "failed" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 z-20">
+                <XCircle className="w-16 h-16 text-red-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
                 <p className="text-gray-400 mb-6">Something went wrong while processing your document.</p>
                 <button
@@ -488,36 +409,117 @@ export default function VidHivedApp() {
                   Try Again
                 </button>
               </div>
-            ) : activeTab === "insights" ? (
-              <div className="h-full overflow-y-auto p-6 space-y-4">
-                {analysisResult?.analysis.map((clause) => (
-                  <div
-                    key={clause.id}
-                    onClick={() => handleClauseClick(clause.id)}
-                    onMouseEnter={() => handleClauseHover(clause.id)}
-                    onMouseLeave={() => handleClauseHover(null)}
-                    className={`bg-gray-700 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:bg-gray-600 border-l-4 ${
-                      activeClause === clause.id ? "ring-2 ring-blue-500" : ""
-                    } ${hoveredClause === clause.id ? "bg-gray-600" : ""}`}
-                    style={{ borderLeftColor: getCategoryColor(clause.category) }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
-                        style={{ backgroundColor: getCategoryColor(clause.category) }}
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-white mb-2">{clause.type}</h3>
-                        <p className="text-gray-300 text-sm leading-relaxed">{clause.explanation}</p>
+            )}
+          </div>
+          {showToolbar && pdfFile && (
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/80 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2 z-10 transition-opacity duration-200 shadow-lg">
+              <button
+                onClick={handleZoomOut}
+                disabled={scale <= 0.5}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-gray-300 px-2">{Math.round(scale * 100)}%</span>
+              <button
+                onClick={handleZoomIn}
+                disabled={scale >= 3.0}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <div className="w-px h-6 bg-gray-600 mx-2" />
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage <= 1}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-gray-300 px-2 min-w-[80px] text-center">
+                Page {currentPage} of {numPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage >= numPages}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Right Pane - AI Insights Panel */}
+        <div className="w-full lg:w-2/5 flex flex-col bg-gradient-to-br from-gray-800 via-gray-900 to-blue-950 shadow-xl rounded-r-xl">
+          {/* Tab Headers */}
+          <div className="flex border-b border-gray-700 bg-gray-900 rounded-t-xl">
+            <button
+              onClick={() => setActiveTab("insights")}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors text-lg font-semibold ${
+                activeTab === "insights"
+                  ? "bg-gray-800 text-blue-400 border-b-2 border-blue-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              Key Insights
+            </button>
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors text-lg font-semibold ${
+                activeTab === "chat"
+                  ? "bg-gray-800 text-blue-400 border-b-2 border-blue-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <MessageCircle className="w-5 h-5" />
+              AI Chat
+            </button>
+          </div>
+          {/* Tab Content */}
+          <div className="flex-1 overflow-auto p-8">
+            {activeTab === "insights" && (
+              <div className="space-y-6">
+                {analysisResult?.analysis.length ? (
+                  analysisResult.analysis.map((clause) => (
+                    <div
+                      key={clause.id}
+                      onClick={() => handleClauseClick(clause.id)}
+                      onMouseEnter={() => handleClauseHover(clause.id)}
+                      onMouseLeave={() => handleClauseHover(null)}
+                      className={`bg-gray-900 rounded-xl p-6 cursor-pointer transition-all duration-200 hover:bg-gray-800 border-l-4 shadow-lg ${
+                        activeClause === clause.id ? "ring-2 ring-blue-500" : ""
+                      } ${hoveredClause === clause.id ? "bg-gray-800" : ""}`}
+                      style={{ borderLeftColor: getCategoryColor(clause.category) }}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
+                          style={{ backgroundColor: getCategoryColor(clause.category) }}
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-bold text-white mb-2 text-lg">{clause.type}</h3>
+                          <p className="text-gray-300 text-base leading-relaxed">{clause.explanation}</p>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-12">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-400" />
+                    <p>No analysis results yet. Please wait...</p>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
+            )}
+            {activeTab === "chat" && (
               <div className="h-full flex flex-col">
                 {/* Chat History */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto space-y-6">
                   {chatHistory.length === 0 ? (
                     <div className="text-center text-gray-400 mt-8">
                       <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -530,19 +532,18 @@ export default function VidHivedApp() {
                         className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-lg p-3 ${
-                            message.type === "user" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                          className={`max-w-[80%] rounded-xl p-4 shadow-lg ${
+                            message.type === "user" ? "bg-blue-600 text-white" : "bg-gray-900 text-gray-100"
                           }`}
                         >
-                          <p className="text-sm leading-relaxed">{message.message}</p>
+                          <p className="text-base leading-relaxed">{message.message}</p>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-
                 {/* Chat Input */}
-                <div className="p-6 border-t border-gray-700">
+                <div className="pt-6 border-t border-gray-700">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault()
@@ -555,12 +556,12 @@ export default function VidHivedApp() {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Ask a question about your document..."
-                      className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 bg-gray-900 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                     />
                     <button
                       type="submit"
                       disabled={!chatInput.trim()}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors shadow"
                     >
                       <Send className="w-5 h-5" />
                     </button>
