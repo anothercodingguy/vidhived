@@ -377,25 +377,178 @@ export default function VidHivedApp() {
     )
   }
 
-  // Failed State
-  if (appState === "failed") {
+
+  // Main Analysis View (show PDF viewer for both 'analyzing' and 'failed' states)
+  if (appState === "analyzing" || appState === "failed") {
     return (
-      <div className="min-h-screen bg-gray-900 text-white font-['Inter'] flex items-center justify-center p-8">
-        <div className="text-center max-w-md">
-          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
-          <p className="text-gray-400 mb-6">Something went wrong while processing your document.</p>
-          <button
-            onClick={() => {
-              setAppState("idle")
-              setDocumentId(null)
-              setAnalysisResult(null)
-              // Do NOT clear pdfFile here so PDF remains visible
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
+      <div className="min-h-screen bg-gray-900 text-white font-['Inter'] flex flex-col lg:flex-row">
+        {/* Left Pane - Enhanced PDF Viewer */}
+        <div
+          className="flex-1 p-6 border-r border-gray-700 overflow-auto relative"
+          ref={pdfViewerRef}
+          onMouseEnter={() => setShowToolbar(true)}
+          onMouseLeave={() => setShowToolbar(false)}
+        >
+          <div className="relative">
+            {pdfFile && (
+              <Document file={pdfFile} onLoadSuccess={onDocumentLoadSuccess} className="max-w-full">
+                {Array.from(new Array(numPages), (el, index) => {
+                  const pageNumber = index + 1
+                  return (
+                    <div
+                      key={`page_${pageNumber}`}
+                      className="relative mb-4"
+                      data-page-number={pageNumber}
+                      ref={(el) => setPageRefs((prev) => ({ ...prev, [pageNumber]: el }))}
+                    >
+                      <Page
+                        pageNumber={pageNumber}
+                        onLoadSuccess={onPageLoadSuccess}
+                        className="shadow-lg"
+                        scale={scale}
+                        width={Math.min(600 * scale, window.innerWidth * 0.5)}
+                      />
+
+                      {analysisResult?.analysis
+                        .filter((clause) => clause.location.page === pageNumber)
+                        .map((clause) => {
+                          const pageElement = pageRefs[pageNumber]
+                          const pageRect = pageElement?.querySelector("canvas")?.getBoundingClientRect()
+
+                          if (!pageRect) return null
+
+                          const coords = getScaledCoordinates(clause, pageRect.width, pageRect.height)
+                          const isActive = activeClause === clause.id
+                          const isHovered = hoveredClause === clause.id
+
+                          return (
+                            <div
+                              key={clause.id}
+                              data-clause-id={clause.id}
+                              className={`absolute cursor-pointer transition-all duration-200 border ${
+                                isActive ? "opacity-40 border-2" : isHovered ? "opacity-35 border" : "opacity-30 border"
+                              }`}
+                              style={{
+                                left: `${coords.left}px`,
+                                top: `${coords.top}px`,
+                                width: `${coords.width}px`,
+                                height: `${coords.height}px`,
+                                backgroundColor: getCategoryColor(clause.category),
+                                borderColor: getCategoryColor(clause.category),
+                              }}
+                              onMouseEnter={() => handleClauseHover(clause.id)}
+                              onMouseLeave={() => handleClauseHover(null)}
+                              onClick={() => handleClauseClick(clause.id)}
+                            />
+                          )
+                        })}
+                    </div>
+                  )
+                })}
+              </Document>
+            )}
+          </div>
+
+          {showToolbar && pdfFile && (
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/70 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2 z-10 transition-opacity duration-200">
+              <button
+                onClick={handleZoomOut}
+                disabled={scale <= 0.5}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+
+              <span className="text-sm text-gray-300 px-2">{Math.round(scale * 100)}%</span>
+
+              <button
+                onClick={handleZoomIn}
+                disabled={scale >= 3.0}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+
+              <div className="w-px h-6 bg-gray-600 mx-2" />
+
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage <= 1}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="text-sm text-gray-300 px-2 min-w-[80px] text-center">
+                Page {currentPage} of {numPages}
+              </span>
+
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage >= numPages}
+                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right Pane - AI Insights Panel */}
+        <div className="w-full lg:w-2/5 flex flex-col bg-gray-800">
+          {/* Tab Headers */}
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => setActiveTab("insights")}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors ${
+                activeTab === "insights"
+                  ? "bg-gray-700 text-blue-400 border-b-2 border-blue-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              Key Insights
+            </button>
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-colors ${
+                activeTab === "chat"
+                  ? "bg-gray-700 text-blue-400 border-b-2 border-blue-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <MessageSquare className="w-5 h-5" />
+              AI Chat
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-auto">
+            {appState === "failed" ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
+                <p className="text-gray-400 mb-6">Something went wrong while processing your document.</p>
+                <button
+                  onClick={() => {
+                    setAppState("idle")
+                    setDocumentId(null)
+                    setAnalysisResult(null)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : (
+              // ...existing tab content rendering...
+              <>{activeTab === "insights" ? renderInsightsTab() : renderChatTab()}</>
+            )}
+          </div>
         </div>
       </div>
     )
