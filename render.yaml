@@ -23,10 +23,7 @@ services:
       - key: GOOGLE_APPLICATION_CREDENTIALS
         sync: false
       - key: CORS_ORIGINS
-        fromService:
-          type: web
-          name: vidhived-frontend
-          property: url
+        value: "*"
 
   - type: web
     name: vidhived-frontend
@@ -37,9 +34,11 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm run start
     envVars:
-      - key: NEXT_PUBLIC_API_URL
+      - key: NEXT_PUBLIC_BACKEND_HOST
         fromService:
           type: web
           name: vidhived-backend
-          property: url
+          property: host
+      - key: NEXT_PUBLIC_BACKEND_PROTOCOL
+        value: https
 

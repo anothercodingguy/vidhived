@@ -6,9 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getApiBaseUrl = () => {
-	const env = process.env.NEXT_PUBLIC_API_URL
-	if (env && env.trim().length > 0) return env.replace(/\/$/, '')
-	// Fallback to relative path (proxy) in dev
+	// Prefer a full URL if provided
+	const direct = process.env.NEXT_PUBLIC_API_URL
+	if (direct && direct.trim().length > 0) return direct.replace(/\/$/, '')
+
+	// Compose from protocol + host if provided by platform
+	const host = process.env.NEXT_PUBLIC_BACKEND_HOST
+	const protocol = process.env.NEXT_PUBLIC_BACKEND_PROTOCOL || 'https'
+	if (host && host.trim().length > 0) {
+		return `${protocol}://${host}`
+	}
+
+	// Fallback to relative path (same origin)
 	return ''
 }
 
