@@ -183,10 +183,10 @@ def analyze_document_task(document_id: str, gcs_uri: str):
             for page in response['responses'][0]['fullTextAnnotation']['pages']:
                 for block in page['blocks']:
                     block_text = ""
-                    vertices = block['boundingBox']['vertices']
-                    for paragraph in block['paragraphs']:
-                        for word in paragraph['words']:
-                            word_text = "".join([symbol['text'] for symbol in word['symbols']])
+                    vertices = block.get('boundingBox', {}).get('vertices', None)
+                    for paragraph in block.get('paragraphs', []):
+                        for word in paragraph.get('words', []):
+                            word_text = "".join([symbol.get('text', '') for symbol in word.get('symbols', [])])
                             block_text += word_text + " "
                     full_text += block_text + "\n\n"
                     clauses.append({
