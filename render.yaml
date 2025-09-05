@@ -13,7 +13,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: LOG_LEVEL
-        value: info
+        value: INFO
       - key: GCP_PROJECT_ID
         sync: false
       - key: GCP_REGION
