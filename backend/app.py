@@ -235,8 +235,8 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 Provide the output in a JSON format like this:
                 {
                   "clause_type": "...",
-                  "explanation": "..."
                 }
+                        output_config = vision.OutputConfig(gcs_destination=gcs_destination, batch_size=20)
                 """
                 # MOCK: Replace with Vertex AI call in production
                 if "terminate" in clause_text.lower():
