@@ -266,8 +266,6 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "error": str(e)
             }
 
-    # The following return statement should be part of a route, not inside this task function.
-
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"})
