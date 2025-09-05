@@ -265,7 +265,8 @@ def analyze_document_task(document_id: str, gcs_uri: str):
                 "status": "failed",
                 "error": str(e)
             }
-    return jsonify({"message": "Vidhived.ai Backend API", "version": "1.0", "endpoints": ["/health", "/upload", "/document/<id>", "/ask"]})
+
+    # The following return statement should be part of a route, not inside this task function.
 
 @app.route('/health', methods=['GET'])
 def health():
