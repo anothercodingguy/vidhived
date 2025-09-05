@@ -3,7 +3,8 @@
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { apiFetch } from "@/lib/utils"
-import DocumentViewer from "./DocumentViewer"
+// ...existing code...
+const DocumentViewer = NextDynamic(() => import("./DocumentViewer"), { ssr: false })
 import NextDynamic from "next/dynamic"
 import {
   Upload,
