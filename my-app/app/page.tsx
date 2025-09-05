@@ -544,9 +544,85 @@ export default function VidHivedApp() {
                   Try Again
                 </button>
               </div>
+            ) : activeTab === "insights" ? (
+              <div className="h-full overflow-y-auto p-6 space-y-4">
+                {analysisResult?.analysis.map((clause) => (
+                  <div
+                    key={clause.id}
+                    onClick={() => handleClauseClick(clause.id)}
+                    onMouseEnter={() => handleClauseHover(clause.id)}
+                    onMouseLeave={() => handleClauseHover(null)}
+                    className={`bg-gray-700 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:bg-gray-600 border-l-4 ${
+                      activeClause === clause.id ? "ring-2 ring-blue-500" : ""
+                    } ${hoveredClause === clause.id ? "bg-gray-600" : ""}`}
+                    style={{ borderLeftColor: getCategoryColor(clause.category) }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                        style={{ backgroundColor: getCategoryColor(clause.category) }}
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white mb-2">{clause.type}</h3>
+                        <p className="text-gray-300 text-sm leading-relaxed">{clause.explanation}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              // ...existing tab content rendering...
-              <>{activeTab === "insights" ? renderInsightsTab() : renderChatTab()}</>
+              <div className="h-full flex flex-col">
+                {/* Chat History */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {chatHistory.length === 0 ? (
+                    <div className="text-center text-gray-400 mt-8">
+                      <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Ask me anything about your document</p>
+                    </div>
+                  ) : (
+                    chatHistory.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-lg p-3 ${
+                            message.type === "user" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{message.message}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <div className="p-6 border-t border-gray-700">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      handleAskQuestion(chatInput)
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask a question about your document..."
+                      className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </form>
+                </div>
+              </div>
             )}
           </div>
         </div>
