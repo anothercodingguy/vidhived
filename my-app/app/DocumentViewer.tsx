@@ -36,17 +36,37 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     }
   }, [pdfFile]);
 
-  // Timeout: if loading takes longer than 10s, show error
+  // Timeout: if loading takes longer than 30s, show error
   React.useEffect(() => {
     if (loading && pdfFile) {
       const timer = setTimeout(() => {
-        setError('PDF loading timed out. Please check your file or try a different PDF.');
+        setError('PDF loading timed out after 30 seconds. Please check your file, network, or try a different PDF.');
         setLoading(false);
-        console.error('PDF loading timed out.');
-      }, 10000);
+        console.error('PDF loading timed out after 30 seconds.');
+      }, 30000);
       return () => clearTimeout(timer);
     }
   }, [loading, pdfFile]);
+
+  // Verbose PDF.js worker and network logging
+  React.useEffect(() => {
+    if (pdfFile) {
+      console.log('PDF.js workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
+      if (typeof pdfFile === 'string') {
+        fetch(pdfFile)
+          .then(res => {
+            console.log('PDF URL fetch status:', res.status);
+            if (!res.ok) {
+              setError(`Failed to fetch PDF URL: ${res.status} ${res.statusText}`);
+            }
+          })
+          .catch(err => {
+            setError(`Network error fetching PDF: ${err}`);
+            console.error('Network error fetching PDF:', err);
+          });
+      }
+    }
+  }, [pdfFile]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -85,7 +105,10 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     return (
       <div className="text-center text-red-500 w-full">
         <strong>Failed to load PDF:</strong> {error}
-        <div className="text-xs text-gray-400 mt-2">Try a different browser or PDF file. If you see errors in the console, share them for support.</div>
+        <pre className="bg-gray-100 text-xs text-red-700 mt-2 p-2 rounded overflow-x-auto max-h-40">
+          {error && typeof error === 'object' ? JSON.stringify(error, null, 2) : String(error)}
+        </pre>
+        <div className="text-xs text-gray-400 mt-2">Try a different browser or PDF file. If you see errors in the console, share them for support.<br/>Check network tab for PDF worker and file fetch issues.</div>
       </div>
     );
   }
