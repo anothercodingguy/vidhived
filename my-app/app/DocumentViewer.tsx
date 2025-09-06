@@ -5,8 +5,9 @@ import { Document, Page, pdfjs } from 'react-pdf';
 console.log('Setting PDF.js worker:', pdfjs.version);
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+type PDFSource = File | string | null;
 interface DocumentViewerProps {
-  pdfFile: File | null;
+  pdfFile: PDFSource;
 }
 
 function DocumentViewer({ pdfFile }: DocumentViewerProps) {
@@ -18,13 +19,17 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
 
   // Debug: log file info
   React.useEffect(() => {
-    if (pdfFile) {
+    if (typeof pdfFile === 'string') {
+      console.log('PDF file URL:', pdfFile);
+      setError(null);
+      setLoading(true);
+    } else if (pdfFile) {
       console.log('PDF file info:', {
-        type: pdfFile.type,
-        size: pdfFile.size,
-        name: pdfFile.name,
+        type: (pdfFile as File).type,
+        size: (pdfFile as File).size,
+        name: (pdfFile as File).name,
       });
-      if (pdfFile.type !== 'application/pdf') {
+      if ((pdfFile as File).type !== 'application/pdf') {
         setError('The uploaded file is not a valid PDF.');
         setLoading(false);
       }
@@ -64,7 +69,7 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     return (
       <div className="text-center text-red-500 w-full">
         <strong>No PDF file selected.</strong>
-        <div className="text-gray-400">Please upload a valid PDF document.</div>
+        <div className="text-gray-400">Please upload a valid PDF document or provide a PDF URL.</div>
       </div>
     );
   }
@@ -91,7 +96,9 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
           file={pdfFile}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
-          loading=""
+          loading={<div className="text-center text-blue-400">Loading PDF document...</div>}
+          error={<div className="text-center text-red-500">Failed to load PDF. Please check the file or URL and try again.</div>}
+          noData={<div className="text-center text-gray-400">No PDF file or URL provided.</div>}
         >
           {Array.from(new Array(numPages), (el, index) => {
             const pageNumber = index + 1;
@@ -101,6 +108,9 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
                   pageNumber={pageNumber}
                   onRenderSuccess={() => onPageLoadSuccess(pageNumber)}
                   onRenderError={onDocumentLoadError}
+                  loading={<div className="text-center text-blue-400">Loading page {pageNumber}...</div>}
+                  error={<div className="text-center text-red-500">Failed to load page {pageNumber}.</div>}
+                  noData={<div className="text-center text-gray-400">No page data.</div>}
                 />
               </div>
             );
