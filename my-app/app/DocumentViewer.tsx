@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 // 1. Fix the Worker Configuration (do this at the top of the file)
+console.log('Setting PDF.js worker:', pdfjs.version);
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentViewerProps {
@@ -9,6 +10,7 @@ interface DocumentViewerProps {
 }
 
 function DocumentViewer({ pdfFile }: DocumentViewerProps) {
+  console.log('DocumentViewer mounted. pdfFile:', pdfFile);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,18 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
       }
     }
   }, [pdfFile]);
+
+  // Timeout: if loading takes longer than 10s, show error
+  React.useEffect(() => {
+    if (loading && pdfFile) {
+      const timer = setTimeout(() => {
+        setError('PDF loading timed out. Please check your file or try a different PDF.');
+        setLoading(false);
+        console.error('PDF loading timed out.');
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, pdfFile]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
