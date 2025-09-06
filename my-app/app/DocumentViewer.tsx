@@ -14,6 +14,21 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState({}); // Track loading state per page
 
+  // Debug: log file info
+  React.useEffect(() => {
+    if (pdfFile) {
+      console.log('PDF file info:', {
+        type: pdfFile.type,
+        size: pdfFile.size,
+        name: pdfFile.name,
+      });
+      if (pdfFile.type !== 'application/pdf') {
+        setError('The uploaded file is not a valid PDF.');
+        setLoading(false);
+      }
+    }
+  }, [pdfFile]);
+
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setLoading(false);
@@ -30,6 +45,24 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     setPageLoading((prev) => ({ ...prev, [pageNumber]: false }));
   }
 
+  // Fallback error if no file or invalid file
+  if (!pdfFile) {
+    return (
+      <div className="text-center text-red-500 w-full">
+        <strong>No PDF file selected.</strong>
+        <div className="text-gray-400">Please upload a valid PDF document.</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 w-full">
+        <strong>Failed to load PDF:</strong> {error}
+      </div>
+    );
+  }
+
   return (
     <div className="pdf-container w-full h-full overflow-auto flex items-center justify-center">
       {loading && !error && (
@@ -37,11 +70,6 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
           <span className="animate-spin inline-block mr-2">⏳</span>
           Loading PDF...<br />
           <span className="text-xs text-gray-400">If this takes too long, please check your file and try again.</span>
-        </div>
-      )}
-      {error && (
-        <div className="text-center text-red-500 w-full">
-          <strong>Failed to load PDF:</strong> {error}
         </div>
       )}
       {!loading && !error && pdfFile && (
@@ -55,8 +83,6 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
             const pageNumber = index + 1;
             return (
               <div key={`page_${pageNumber}`} className="mb-4 relative">
-                {/* Page loading indicator is not supported directly, so show after document loads and before page renders */}
-                {/* You may use a skeleton or shimmer here if desired */}
                 <Page
                   pageNumber={pageNumber}
                   onRenderSuccess={() => onPageLoadSuccess(pageNumber)}
