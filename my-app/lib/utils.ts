@@ -25,14 +25,9 @@ export const apiFetch = async (path: string, init?: RequestInit) => {
 	const base = getApiBaseUrl()
 	const url = `${base}${path.startsWith('/') ? path : `/${path}`}`
 	const res = await fetch(url, init)
-	let data
-	try {
-		data = await res.json()
-	} catch {
-		data = {}
-	}
 	if (!res.ok) {
-		throw new Error(data.error || `API ${res.status}: ${JSON.stringify(data)}`)
+		const text = await res.text().catch(() => '')
+		throw new Error(`API ${res.status}: ${text}`)
 	}
-	return data
+	return res.json()
 }
