@@ -54,11 +54,18 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     setError(null);
   }
 
-  function onDocumentLoadError(err: Error) {
-    console.error('PDF load error:', err);
-    setError(err?.message || 'Failed to load PDF. Please make sure you are uploading a valid PDF file.');
-    setLoading(false);
-  }
+    function onDocumentLoadError(err: any) {
+      // PDF.js errors can be strings or Error objects
+      let errorMsg = 'Failed to load PDF.';
+      if (err) {
+        if (typeof err === 'string') errorMsg = err;
+        else if (err.message) errorMsg = err.message;
+        else if (err.toString) errorMsg = err.toString();
+      }
+      console.error('PDF load error:', err);
+      setError(errorMsg + ' (PDF.js error)');
+      setLoading(false);
+    }
 
   function onPageLoadSuccess(pageNumber: number) {
     setPageLoading((prev) => ({ ...prev, [pageNumber]: false }));
@@ -78,6 +85,7 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
     return (
       <div className="text-center text-red-500 w-full">
         <strong>Failed to load PDF:</strong> {error}
+        <div className="text-xs text-gray-400 mt-2">Try a different browser or PDF file. If you see errors in the console, share them for support.</div>
       </div>
     );
   }
@@ -88,7 +96,7 @@ function DocumentViewer({ pdfFile }: DocumentViewerProps) {
         <div className="text-center w-full">
           <span className="animate-spin inline-block mr-2">⏳</span>
           Loading PDF...<br />
-          <span className="text-xs text-gray-400">If this takes too long, please check your file and try again.</span>
+          <span className="text-xs text-gray-400">If this takes too long, check your file, browser compatibility, or try a different PDF.</span>
         </div>
       )}
       {!loading && !error && pdfFile && (
