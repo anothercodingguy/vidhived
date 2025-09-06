@@ -1,26 +1,4 @@
 from flask import send_file
-# --- Serve PDF File Endpoint ---
-@app.route('/pdf/<string:document_id>', methods=['GET'])
-def serve_pdf(document_id: str):
-    """
-    Endpoint to stream the uploaded PDF file for direct viewing.
-    """
-    try:
-        storage_client = storage.Client(project=GCP_PROJECT_ID) if GCP_PROJECT_ID else storage.Client()
-        bucket = storage_client.bucket(GCS_BUCKET_NAME)
-        blob = bucket.blob(f"uploads/{document_id}.pdf")
-        if not blob.exists():
-            return jsonify({"error": "PDF file not found"}), 404
-        pdf_bytes = blob.download_as_bytes()
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=False,
-            download_name=f"{document_id}.pdf"
-        )
-    except Exception as e:
-        logger.exception(f"Error serving PDF for document {document_id}: {e}")
-        return jsonify({"error": f"Could not serve PDF: {str(e)}"}), 500
 # --- Root API Endpoint ---
 # (Moved below Flask app initialization)
 # Vidhived.ai - Legal Co-pilot Backend
@@ -280,6 +258,29 @@ def health():
 
 
 # --- API Endpoints ---
+
+# --- Serve PDF File Endpoint ---
+@app.route('/pdf/<string:document_id>', methods=['GET'])
+def serve_pdf(document_id: str):
+    """
+    Endpoint to stream the uploaded PDF file for direct viewing.
+    """
+    try:
+        storage_client = storage.Client(project=GCP_PROJECT_ID) if GCP_PROJECT_ID else storage.Client()
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(f"uploads/{document_id}.pdf")
+        if not blob.exists():
+            return jsonify({"error": "PDF file not found"}), 404
+        pdf_bytes = blob.download_as_bytes()
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=f"{document_id}.pdf"
+        )
+    except Exception as e:
+        logger.exception(f"Error serving PDF for document {document_id}: {e}")
+        return jsonify({"error": f"Could not serve PDF: {str(e)}"}), 500
 @app.route('/upload', methods=['POST'])
 def upload_document():
     """
