@@ -392,7 +392,7 @@ export default function VidHivedApp() {
           onMouseLeave={() => setShowToolbar(false)}
         >
           <div className="rounded-lg bg-gray-950 shadow-lg p-4 h-full flex flex-col justify-center items-center">
-            <DocumentViewer pdfFile={pdfFile} />
+            <DocumentViewer key={pdfFile?.name || (typeof pdfFile === 'string' ? pdfFile : '')} pdfFile={pdfFile} />
             {appState === "failed" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 z-20">
                 <XCircle className="w-16 h-16 text-red-500 mb-4" />
