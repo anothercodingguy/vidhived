@@ -55,7 +55,7 @@ export const dynamic = "force-dynamic"
 
 export default function VidHivedApp() {
   const [appState, setAppState] = useState<AppState>("idle")
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfFile, setPdfFile] = useState<File | string | null>(null)
   const [documentId, setDocumentId] = useState<string | null>(null)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
@@ -93,7 +93,7 @@ export default function VidHivedApp() {
       return
     }
 
-    setPdfFile(file)
+  setPdfFile(file)
     setAppState("uploading")
 
     try {
@@ -105,12 +105,14 @@ export default function VidHivedApp() {
         body: formData as any,
       })
 
-      const data = response as any
-      setDocumentId(data.documentId)
-      setAppState("processing")
+  const data = response as any
+  setDocumentId(data.documentId)
+  // Set PDF source to backend URL for viewing
+  setPdfFile(`${process.env.NEXT_PUBLIC_BACKEND_URL || ""}/pdf/${data.documentId}`)
+  setAppState("processing")
 
-      // Start polling for analysis status
-      checkAnalysisStatus(data.documentId)
+  // Start polling for analysis status
+  checkAnalysisStatus(data.documentId)
     } catch (error) {
       console.error("Upload error:", error)
       setAppState("failed")
@@ -392,7 +394,7 @@ export default function VidHivedApp() {
           onMouseLeave={() => setShowToolbar(false)}
         >
           <div className="rounded-lg bg-gray-950 shadow-lg p-4 h-full flex flex-col justify-center items-center">
-            <DocumentViewer key={pdfFile?.name || (typeof pdfFile === 'string' ? pdfFile : '')} pdfFile={pdfFile} />
+            <DocumentViewer key={typeof pdfFile === 'string' ? pdfFile : pdfFile?.name} pdfFile={pdfFile} />
             {appState === "failed" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 z-20">
                 <XCircle className="w-16 h-16 text-red-500 mb-4" />
