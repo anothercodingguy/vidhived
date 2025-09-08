@@ -260,18 +260,21 @@ def health():
 # --- API Endpoints ---
 
 # --- Serve PDF File Endpoint ---
+
 @app.route('/pdf/<string:document_id>', methods=['GET'])
 def serve_pdf(document_id: str):
-    """
-    Endpoint to stream the uploaded PDF file for direct viewing.
-    """
+    logger.info(f"PDF request for document_id: {document_id}")
     try:
         storage_client = storage.Client(project=GCP_PROJECT_ID) if GCP_PROJECT_ID else storage.Client()
         bucket = storage_client.bucket(GCS_BUCKET_NAME)
-        blob = bucket.blob(f"uploads/{document_id}.pdf")
+        pdf_blob_path = f"uploads/{document_id}.pdf"
+        logger.info(f"Looking for PDF blob at: {pdf_blob_path}")
+        blob = bucket.blob(pdf_blob_path)
         if not blob.exists():
-            return jsonify({"error": "PDF file not found"}), 404
+            logger.error(f"PDF not found for document_id: {document_id} at {pdf_blob_path}")
+            return jsonify({"error": "PDF not found", "document_id": document_id, "blob_path": pdf_blob_path}), 404
         pdf_bytes = blob.download_as_bytes()
+        logger.info(f"PDF found and downloaded for document_id: {document_id}, size: {len(pdf_bytes)} bytes")
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
@@ -279,8 +282,8 @@ def serve_pdf(document_id: str):
             download_name=f"{document_id}.pdf"
         )
     except Exception as e:
-        logger.exception(f"Error serving PDF for document {document_id}: {e}")
-        return jsonify({"error": f"Could not serve PDF: {str(e)}"}), 500
+        logger.exception(f"Error serving PDF for document_id: {document_id}: {e}")
+        return jsonify({"error": str(e), "document_id": document_id}), 500
 @app.route('/upload', methods=['POST'])
 def upload_document():
     """
